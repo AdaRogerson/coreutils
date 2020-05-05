@@ -1,0 +1,4 @@
+int foo() {
+    // with tabs
+    return 0;
+}
