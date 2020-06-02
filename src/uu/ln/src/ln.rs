@@ -37,8 +37,9 @@ static LONG_HELP: &str = "
  can hold arbitrary text; if later resolved, a relative link is
  interpreted in relation to its parent directory.
 ";
-const VERSION: &str = env!("CARGO_PKG_VERSION");
 static ABOUT: &str = "make links between files";
+static OPT_PATHS: &str = "paths";
+static VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const OPT_BACKUP : &str = "backup";
 const OPT_DIRECTORY: &str = "directory";
@@ -149,7 +150,7 @@ pub fn uumain(args: Vec<String>) -> i32 {
             .short("S")
             .long(OPT_SUFFIX)
             .takes_value(true)
-            .default_value('~')
+             .default_value("~")
             .help("override the usual backup suffix"))
         .arg(Arg::with_name(OPT_TARGET_DIRECTORY)
             .short("t")
@@ -166,6 +167,8 @@ pub fn uumain(args: Vec<String>) -> i32 {
             .short("v")
             .long(OPT_VERBOSE)
             .help("print name of each linked file"))
+        .arg(Arg::with_name(OPT_PATHS)
+             .multiple(true))
         .get_matches_from(&args);
 
     let overwrite_mode = if matches.is_present(OPT_FORCE) {
@@ -201,32 +204,23 @@ pub fn uumain(args: Vec<String>) -> i32 {
         BackupMode::NoBackup
     };
 
-    let backup_suffix = if matches.is_present(OPT_SUFFIX) (
-        match matches.value_of(OPT_SUFFIX).unwrap().to_string() {
-            Some(x) => x,
-            None => {
-                show_error!(
-                    "option '--suffix' requires an argument\n\
-                     Try '{} --help' for more information.",
-                    NAME
-                );
-                return 1;
-            }
-        }
-    ) 
+
 
     let settings = Settings {
         overwrite: overwrite_mode,
         backup: backup_mode,
-        suffix: backup_suffix,
+        suffix: matches.value_of(OPT_SUFFIX).unwrap().to_string(),
         symbolic: matches.is_present(OPT_SYMBOLIC),
-        target_dir: matches.value_of(OPT_TARGET_DIRECTORY),
+        target_dir: matches.value_of(OPT_TARGET_DIRECTORY).map(ToString::to_string),
         no_target_dir: matches.is_present(OPT_NO_TARGET_DIRECTORY),
         verbose: matches.is_present(OPT_VERBOSE),
     };
 
-    let string_to_path = |s: &String| PathBuf::from(s);
-    let paths: Vec<PathBuf> = matches.free.iter().map(string_to_path).collect();
+    let paths: Vec<PathBuf> = matches
+        .values_of(OPT_PATHS)
+        .map(|v| v.map(PathBuf::from).collect())
+        .unwrap_or_default();
+
 
     exec(&paths[..], &settings)
 }
