@@ -103,6 +103,7 @@ pub fn uumain(args: Vec<String>) -> i32 {
             .short("b")
             .long(OPT_BACKUP)
             .takes_value(true)
+            .possible_values(&["simple", "numbered", "existing", "none"])
             .help("make a backup of each file that would otherwise be \
                    overwritten or removed"))
         //TODO:
@@ -150,18 +151,15 @@ pub fn uumain(args: Vec<String>) -> i32 {
             .short("S")
             .long(OPT_SUFFIX)
             .takes_value(true)
-             .default_value("~")
             .help("override the usual backup suffix"))
         .arg(Arg::with_name(OPT_TARGET_DIRECTORY)
             .short("t")
             .long(OPT_TARGET_DIRECTORY)
             .takes_value(true)
-            .conflicts_with(OPT_NO_TARGET_DIRECTORY)
             .help("specify the DIRECTORY in which to create the links"))
         .arg(Arg::with_name(OPT_NO_TARGET_DIRECTORY)
             .short("T")
             .long(OPT_NO_TARGET_DIRECTORY)
-            .conflicts_with(OPT_TARGET_DIRECTORY)
             .help("treat LINK_NAME as a normal file always"))
         .arg(Arg::with_name(OPT_VERBOSE)
             .short("v")
@@ -204,12 +202,31 @@ pub fn uumain(args: Vec<String>) -> i32 {
         BackupMode::NoBackup
     };
 
-
+    let backup_suffix = if matches.is_present(OPT_SUFFIX) {
+        match matches.value_of(OPT_SUFFIX) {
+            Some(x) => x,
+            None => {
+                show_error!(
+                    "option '--suffix' requires an argument\n\
+                     Try '{} --help' for more information.",
+                    NAME
+                );
+                return 1;
+            }
+        }
+    } else {
+        "~"
+    };
+    
+    if matches.is_present(OPT_NO_TARGET_DIRECTORY) && matches.is_present(OPT_TARGET_DIRECTORY) {
+        show_error!("cannot combine --target-directory (-t) and --no-target-directory (-T)");
+        return 1;
+    }
 
     let settings = Settings {
         overwrite: overwrite_mode,
         backup: backup_mode,
-        suffix: matches.value_of(OPT_SUFFIX).unwrap().to_string(),
+        suffix: backup_suffix.to_string(),
         symbolic: matches.is_present(OPT_SYMBOLIC),
         target_dir: matches.value_of(OPT_TARGET_DIRECTORY).map(ToString::to_string),
         no_target_dir: matches.is_present(OPT_NO_TARGET_DIRECTORY),
