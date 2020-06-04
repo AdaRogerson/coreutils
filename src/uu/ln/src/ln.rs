@@ -26,22 +26,22 @@ use std::path::{Path, PathBuf};
 use clap::{App, Arg};
 
 static NAME: &str = "ln";
-static SUMMARY: &str = "";
 static LONG_HELP: &str = "
- In the 1st form, create a link to TARGET with the name LINK_NAME.
- In the 2nd form, create a link to TARGET in the current directory.
- In the 3rd and 4th forms, create links to each TARGET in DIRECTORY.
- Create hard links by default, symbolic links with --symbolic.
- By default, each destination (name of new link) should not already exist.
- When creating hard links, each TARGET must exist.  Symbolic links
- can hold arbitrary text; if later resolved, a relative link is
- interpreted in relation to its parent directory.
+In the 1st form, create a link to TARGET with the name LINK_NAME.
+In the 2nd form, create a link to TARGET in the current directory.
+In the 3rd and 4th forms, create links to each TARGET in DIRECTORY.
+Create hard links by default, symbolic links with --symbolic.
+By default, each destination (name of new link) should not already exist.
+When creating hard links, each TARGET must exist.  Symbolic links
+can hold arbitrary text; if later resolved, a relative link is
+interpreted in relation to its parent directory.
 ";
 static ABOUT: &str = "make links between files";
 static OPT_PATHS: &str = "paths";
 static VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const OPT_BACKUP : &str = "backup";
+const OPT_BACKUP_NO_ARGS: &str = "b";
+const OPT_BACKUP: &str = "backup";
 const OPT_DIRECTORY: &str = "directory";
 const OPT_FORCE: &str = "force";
 const OPT_INTERACTIVE: &str = "interactive";
@@ -91,19 +91,21 @@ fn get_usage() -> String {
     )
 }
 
-
-
 pub fn uumain(args: Vec<String>) -> i32 {
     let usage = get_usage();
     let matches = App::new(executable!())
         .version(VERSION)
         .about(ABOUT)
         .usage(&usage[..])
+        .after_help(LONG_HELP)
+        .arg(Arg::with_name(OPT_BACKUP_NO_ARGS)
+            .short(OPT_BACKUP_NO_ARGS)
+            .takes_value(false)
+            .help("like --backup but does not accept an argument"))
         .arg(Arg::with_name(OPT_BACKUP)
-            .short("b")
             .long(OPT_BACKUP)
             .takes_value(true)
-            .possible_values(&["simple", "numbered", "existing", "none"])
+            .possible_values(&["simple","never", "numbered","t", "existing","nil", "none"])
             .help("make a backup of each file that would otherwise be \
                    overwritten or removed"))
         //TODO:
@@ -151,15 +153,18 @@ pub fn uumain(args: Vec<String>) -> i32 {
             .short("S")
             .long(OPT_SUFFIX)
             .takes_value(true)
+            .default_value("~")
             .help("override the usual backup suffix"))
         .arg(Arg::with_name(OPT_TARGET_DIRECTORY)
             .short("t")
             .long(OPT_TARGET_DIRECTORY)
             .takes_value(true)
+            .conflicts_with(OPT_NO_TARGET_DIRECTORY)
             .help("specify the DIRECTORY in which to create the links"))
         .arg(Arg::with_name(OPT_NO_TARGET_DIRECTORY)
             .short("T")
             .long(OPT_NO_TARGET_DIRECTORY)
+            .conflicts_with(OPT_TARGET_DIRECTORY)
             .help("treat LINK_NAME as a normal file always"))
         .arg(Arg::with_name(OPT_VERBOSE)
             .short("v")
@@ -178,55 +183,32 @@ pub fn uumain(args: Vec<String>) -> i32 {
     };
 
     let backup_mode = if matches.is_present(OPT_BACKUP) {
-        BackupMode::ExistingBackup
-    } else if matches.is_present(OPT_BACKUP) {
-        match matches.value_of(OPT_BACKUP) {
-            None => BackupMode::ExistingBackup,
-            Some(mode) => match &mode[..] {
-                "simple" | "never" => BackupMode::SimpleBackup,
-                "numbered" | "t" => BackupMode::NumberedBackup,
-                "existing" | "nil" => BackupMode::ExistingBackup,
-                "none" | "off" => BackupMode::NoBackup,
-                x => {
-                    show_error!(
-                        "invalid argument '{}' for 'backup method'\n\
-                         Try '{} --help' for more information.",
-                        x,
-                        NAME
-                    );
-                    return 1;
-                }
-            },
-        }
-    } else {
-        BackupMode::NoBackup
-    };
-
-    let backup_suffix = if matches.is_present(OPT_SUFFIX) {
-        match matches.value_of(OPT_SUFFIX) {
-            Some(x) => x,
-            None => {
+        match matches.value_of(OPT_BACKUP).unwrap(){
+            "simple" | "never" => BackupMode::SimpleBackup,
+            "numbered" | "t" => BackupMode::NumberedBackup,
+            "existing" | "nil" => BackupMode::ExistingBackup,
+            "none" | "off" => BackupMode::NoBackup,
+            x => {
                 show_error!(
-                    "option '--suffix' requires an argument\n\
+                    "invalid argument '{}' for 'backup method'\n\
                      Try '{} --help' for more information.",
+                    x,
                     NAME
                 );
                 return 1;
             }
         }
-    } else {
-        "~"
+    } else if matches.is_present(OPT_BACKUP_NO_ARGS) {
+        BackupMode::ExistingBackup
+    }
+    else {
+        BackupMode::NoBackup
     };
     
-    if matches.is_present(OPT_NO_TARGET_DIRECTORY) && matches.is_present(OPT_TARGET_DIRECTORY) {
-        show_error!("cannot combine --target-directory (-t) and --no-target-directory (-T)");
-        return 1;
-    }
-
     let settings = Settings {
         overwrite: overwrite_mode,
         backup: backup_mode,
-        suffix: backup_suffix.to_string(),
+        suffix: matches.value_of(OPT_SUFFIX).unwrap().to_string(),
         symbolic: matches.is_present(OPT_SYMBOLIC),
         target_dir: matches.value_of(OPT_TARGET_DIRECTORY).map(ToString::to_string),
         no_target_dir: matches.is_present(OPT_NO_TARGET_DIRECTORY),
@@ -237,7 +219,6 @@ pub fn uumain(args: Vec<String>) -> i32 {
         .values_of(OPT_PATHS)
         .map(|v| v.map(PathBuf::from).collect())
         .unwrap_or_default();
-
 
     exec(&paths[..], &settings)
 }
