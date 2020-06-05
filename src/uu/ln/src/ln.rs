@@ -14,7 +14,6 @@ extern crate clap;
 #[macro_use]
 extern crate uucore;
 
-
 use std::fs;
 use std::io::{stdin, Result};
 #[cfg(any(unix, target_os = "redox"))]
@@ -27,13 +26,13 @@ use clap::{App, Arg};
 
 static NAME: &str = "ln";
 static LONG_HELP: &str = "
-In the 1st form, create a link to TARGET with the name LINK_NAME.
+In the 1st form, create a link to TARGET with the name LINK_NAME. 
 In the 2nd form, create a link to TARGET in the current directory.
-In the 3rd and 4th forms, create links to each TARGET in DIRECTORY.
-Create hard links by default, symbolic links with --symbolic.
-By default, each destination (name of new link) should not already exist.
-When creating hard links, each TARGET must exist.  Symbolic links
-can hold arbitrary text; if later resolved, a relative link is
+In the 3rd and 4th forms, create links to each TARGET in DIRECTORY. 
+Create hard links by default, symbolic links with --symbolic. \
+By default, each destination (name of new link) should not already exist. \
+When creating hard links, each TARGET must exist.  Symbolic links \
+can hold arbitrary text; if later resolved, a relative link is \
 interpreted in relation to its parent directory.
 ";
 static ABOUT: &str = "make links between files";
@@ -42,18 +41,20 @@ static VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const OPT_BACKUP_NO_ARGS: &str = "b";
 const OPT_BACKUP: &str = "backup";
-const OPT_DIRECTORY: &str = "directory";
 const OPT_FORCE: &str = "force";
 const OPT_INTERACTIVE: &str = "interactive";
-const OPT_LOGICAL: &str = "logical";
-const OPT_NO_DEREFERENCE: &str = "no-dereference";
-const OPT_PHYSICAL: &str = "physical";
-const OPT_RELATIVE: &str = "relative";
 const OPT_SYMBOLIC: &str = "symbolic";
 const OPT_SUFFIX : &str = "suffix";
 const OPT_TARGET_DIRECTORY: &str = "target-directory";
 const OPT_NO_TARGET_DIRECTORY: &str = "no-target-directory";
 const OPT_VERBOSE: &str = "verbose";
+
+//TODO not implemented
+//TODO const OPT_DIRECTORY: &str = "directory";
+//TODO const OPT_LOGICAL: &str = "logical";
+//TODO const OPT_NO_DEREFERENCE: &str = "no-dereference";
+//TODO const OPT_PHYSICAL: &str = "physical";
+//TODO const OPT_RELATIVE: &str = "relative";
 
 pub struct Settings {
     overwrite: OverwriteMode,
@@ -192,8 +193,7 @@ pub fn uumain(args: Vec<String>) -> i32 {
                 show_error!(
                     "invalid argument '{}' for 'backup method'\n\
                      Try '{} --help' for more information.",
-                    x,
-                    NAME
+                    NAME,x
                 );
                 return 1;
             }
